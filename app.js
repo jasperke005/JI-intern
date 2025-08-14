@@ -116,166 +116,65 @@ class ContactDirectoryApp {
 
     async loadContactsFromCSV() {
         try {
-            console.log('Attempting to fetch list.csv...');
-            console.log('Current location:', window.location.href);
-            console.log('Base URL:', window.location.origin + window.location.pathname);
+            console.log('Attempting to load contacts from CSV...');
+            const response = await fetch('./list.csv');
             
-            // Try different paths for different environments
-            const paths = [
-                'csv-data.html',
-                './csv-data.html',
-                'list.csv',
-                './list.csv',
-                '../list.csv',
-                window.location.pathname.replace(/\/[^\/]*$/, '/') + 'list.csv'
-            ];
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
-            let response = null;
-            let csvText = null;
+            const csvText = await response.text();
+            const lines = csvText.split('\n');
             
-            for (const path of paths) {
-                try {
-                    console.log('Trying path:', path);
-                    response = await fetch(path);
-                    console.log('Response status for', path, ':', response.status);
+            // Skip header lines (first 3 lines)
+            const dataLines = lines.slice(3).filter(line => line.trim() !== '');
+            
+            const csvContacts = [];
+            
+            dataLines.forEach(line => {
+                const columns = line.split(',');
+                if (columns.length >= 8) {
+                    const contact = {
+                        firstName: columns[0]?.trim() || '',
+                        lastName: columns[1]?.trim() || '',
+                        internalNumber: columns[2]?.trim() || '',
+                        wirelessNumber: columns[3]?.trim() || '',
+                        function: columns[4]?.trim() || '',
+                        directLine: columns[5]?.trim() || '',
+                        gsmNumber: columns[6]?.trim() || '',
+                        faxNumber: columns[7]?.trim() || ''
+                    };
                     
-                    if (response.ok) {
-                        let text = await response.text();
-                        
-                        // If this is the HTML fallback page, extract CSV data
-                        if (path.includes('csv-data.html')) {
-                            console.log('Using HTML fallback page, extracting CSV data...');
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(text, 'text/html');
-                            const csvElement = doc.getElementById('csvData');
-                            if (csvElement) {
-                                csvText = csvElement.textContent;
-                                console.log('CSV data extracted from HTML fallback');
-                            } else {
-                                console.log('Could not find CSV data in HTML fallback');
-                                continue;
-                            }
-                        } else {
-                            csvText = text;
-                        }
-                        
-                        console.log('CSV loaded successfully from:', path);
-                        break;
+                    // Only add if we have at least a first name or last name
+                    if (contact.firstName || contact.lastName) {
+                        csvContacts.push(contact);
                     }
-                } catch (pathError) {
-                    console.log('Path', path, 'failed:', pathError.message);
+                }
+            });
+            
+            console.log(`CSV loading successful: ${csvContacts.length} contacts loaded`);
+            
+            if (csvContacts.length > 0) {
+                // Update contacts with CSV data
+                this.contacts = csvContacts;
+                this.renderContacts();
+                this.showDataStatus();
+                
+                // Save to localStorage for future use
+                try {
+                    localStorage.setItem('contacts', JSON.stringify(csvContacts));
+                    console.log('Contacts saved to localStorage');
+                } catch (localStorageError) {
+                    console.log('localStorage save failed:', localStorageError.message);
                 }
             }
             
-            if (!csvText) {
-                console.log('All CSV paths failed, checking what files are available...');
-                // Try to list available files by checking common paths
-                const testPaths = ['list.csv', 'index.html', 'app.js', 'styles.css'];
-                for (const testPath of testPaths) {
-                    try {
-                        const testResponse = await fetch(testPath);
-                        console.log('File', testPath, 'status:', testResponse.status);
-                    } catch (e) {
-                        console.log('File', testPath, 'not accessible');
-                    }
-                }
-                throw new Error('Could not load CSV from any path');
-            }
+            return csvContacts;
             
-            console.log('CSV loaded, length:', csvText.length);
-            console.log('First few lines:', csvText.substring(0, 200));
-            
-            this.contacts = this.parseCSV(csvText);
-            console.log('Parsed contacts:', this.contacts.length);
-            console.log('First contact:', this.contacts[0]);
-            
-            this.saveContacts();
         } catch (error) {
-            console.error('Error loading CSV:', error);
-            console.log('Falling back to embedded contacts...');
-            // Use embedded contacts if CSV fails
-            if (typeof EMBEDDED_CONTACTS !== 'undefined') {
-                this.contacts = EMBEDDED_CONTACTS;
-                console.log('Embedded contacts loaded:', this.contacts.length);
-            } else {
-                console.log('No embedded contacts, using sample contacts...');
-                this.contacts = this.createSampleContacts();
-                console.log('Sample contacts created:', this.contacts.length);
-            }
+            console.log('CSV loading failed:', error.message);
+            throw error;
         }
-    }
-
-    parseCSV(csvText) {
-        const lines = csvText.split('\n');
-        const contacts = [];
-        
-        console.log('Parsing CSV with', lines.length, 'lines');
-        console.log('First line (headers):', lines[0]);
-        
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            
-            const parts = line.split(',');
-            console.log(`Line ${i}:`, parts);
-            
-            if (parts.length >= 8) {
-                const contact = {
-                    firstName: parts[0].trim(),
-                    lastName: parts[1].trim(),
-                    internalNumber: parts[2].trim(),
-                    wirelessNumber: parts[3].trim(),
-                    function: parts[4].trim(),
-                    directLine: parts[5].trim(),
-                    gsmNumber: parts[6].trim(),
-                    faxNumber: parts[7].trim()
-                };
-                
-                console.log('Created contact:', contact);
-                
-                // Add if it has at least a first name OR last name, AND an internal number
-                if ((contact.firstName || contact.lastName) && contact.internalNumber) {
-                    console.log('Adding contact:', contact.firstName || 'No First', contact.lastName || 'No Last');
-                    contacts.push(contact);
-                } else {
-                    console.log('Skipping contact - missing required fields:', {
-                        firstName: !!contact.firstName,
-                        lastName: !!contact.lastName,
-                        internalNumber: !!contact.internalNumber
-                    });
-                }
-            } else {
-                console.log(`Line ${i} has only ${parts.length} parts, skipping`);
-            }
-        }
-        
-        console.log('Final contacts array:', contacts);
-        return contacts;
-    }
-
-    createSampleContacts() {
-        return [
-            {
-                firstName: 'John',
-                lastName: 'Doe',
-                internalNumber: '1001',
-                wirelessNumber: '+32 123 456 789',
-                function: 'Manager',
-                directLine: '+32 123 456 790',
-                gsmNumber: '+32 123 456 791',
-                faxNumber: '+32 123 456 792'
-            },
-            {
-                firstName: 'Jane',
-                lastName: 'Smith',
-                internalNumber: '1002',
-                wirelessNumber: '+32 123 456 793',
-                function: 'Developer',
-                directLine: '+32 123 456 794',
-                gsmNumber: '+32 123 456 795',
-                faxNumber: '+32 123 456 796'
-            }
-        ];
     }
 
     handleSearch(query) {
@@ -509,9 +408,16 @@ class ContactDirectoryApp {
         };
         
         this.contacts.push(contact);
-        this.saveContacts();
         this.renderContacts();
         this.hideAddContactDialog();
+        
+        // Save to localStorage
+        try {
+            localStorage.setItem('contacts', JSON.stringify(this.contacts));
+            console.log('Contact added and saved to localStorage');
+        } catch (localStorageError) {
+            console.log('localStorage save failed:', localStorageError.message);
+        }
         
         this.showSuccess('Contact added successfully');
     }
@@ -620,9 +526,16 @@ class ContactDirectoryApp {
         
         if (contactIndex !== -1) {
             this.contacts[contactIndex] = updatedContact;
-            this.saveContacts();
             this.renderContacts();
             this.showSuccess('Contact updated successfully');
+            
+            // Save to localStorage
+            try {
+                localStorage.setItem('contacts', JSON.stringify(this.contacts));
+                console.log('Contact updated and saved to localStorage');
+            } catch (localStorageError) {
+                console.log('localStorage save failed:', localStorageError.message);
+            }
         }
         
         // Restore the original edit dialog
@@ -705,9 +618,17 @@ class ContactDirectoryApp {
             const index = this.contacts.findIndex(c => c.internalNumber === contact.internalNumber);
             if (index > -1) {
                 this.contacts.splice(index, 1);
-                this.saveContacts();
                 this.renderContacts();
                 this.hideDeleteContactDialog();
+                
+                // Save to localStorage
+                try {
+                    localStorage.setItem('contacts', JSON.stringify(this.contacts));
+                    console.log('Contact deleted and saved to localStorage');
+                } catch (localStorageError) {
+                    console.log('localStorage save failed:', localStorageError.message);
+                }
+                
                 this.showSuccess('Contact deleted successfully');
             }
         }
@@ -741,12 +662,47 @@ class ContactDirectoryApp {
         reader.onload = (e) => {
             try {
                 const csvText = e.target.result;
-                const newContacts = this.parseCSV(csvText);
+                const lines = csvText.split('\n');
+                
+                // Skip header lines (first 3 lines)
+                const dataLines = lines.slice(3).filter(line => line.trim() !== '');
+                
+                const newContacts = [];
+                
+                dataLines.forEach(line => {
+                    const columns = line.split(',');
+                    if (columns.length >= 8) {
+                        const contact = {
+                            firstName: columns[0]?.trim() || '',
+                            lastName: columns[1]?.trim() || '',
+                            internalNumber: columns[2]?.trim() || '',
+                            wirelessNumber: columns[3]?.trim() || '',
+                            function: columns[4]?.trim() || '',
+                            directLine: columns[5]?.trim() || '',
+                            gsmNumber: columns[6]?.trim() || '',
+                            faxNumber: columns[7]?.trim() || ''
+                        };
+                        
+                        // Only add if we have at least a first name or last name
+                        if (contact.firstName || contact.lastName) {
+                            newContacts.push(contact);
+                        }
+                    }
+                });
+                
                 this.contacts = newContacts;
-                this.saveContacts();
                 this.renderContacts();
                 this.hideUploadDialog();
                 this.showSuccess(`Successfully uploaded ${newContacts.length} contacts`);
+                
+                // Save to localStorage
+                try {
+                    localStorage.setItem('contacts', JSON.stringify(newContacts));
+                    console.log('Uploaded contacts saved to localStorage');
+                } catch (localStorageError) {
+                    console.log('localStorage save failed:', localStorageError.message);
+                }
+                
             } catch (error) {
                 this.showError('Error parsing CSV file');
             }
@@ -801,9 +757,7 @@ class ContactDirectoryApp {
         return csvRows.join('\n');
     }
 
-    saveContacts() {
-        localStorage.setItem('contacts', JSON.stringify(this.contacts));
-    }
+
 
     showLoading(show) {
         const spinner = document.getElementById('loadingSpinner');
