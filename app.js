@@ -67,40 +67,45 @@ class ContactDirectoryApp {
             this.showLoading(true);
             console.log('Starting to load contacts...');
             
-            // First, try to load from localStorage
-            const savedContacts = localStorage.getItem('contacts');
-            if (savedContacts) {
-                console.log('Loading contacts from localStorage');
-                this.contacts = JSON.parse(savedContacts);
-                console.log('Loaded from localStorage:', this.contacts.length, 'contacts');
-            } else {
-                console.log('No localStorage contacts, using embedded contacts first...');
-                
-                // Use embedded contacts immediately for fast loading
-                if (typeof EMBEDDED_CONTACTS !== 'undefined') {
-                    this.contacts = EMBEDDED_CONTACTS;
-                    console.log('Using embedded contacts:', this.contacts.length, 'contacts');
-                    this.renderContacts(); // Show contacts immediately
-                }
-                
-                // Then try to load from CSV in background
-                try {
-                    await this.loadContactsFromCSV();
-                } catch (csvError) {
-                    console.log('CSV loading failed, keeping embedded contacts:', csvError.message);
-                }
+            // Always start with embedded contacts for immediate display
+            if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
+                console.log('Loading embedded contacts first:', EMBEDDED_CONTACTS.length, 'contacts');
+                this.contacts = [...EMBEDDED_CONTACTS]; // Create a copy
+                this.renderContacts(); // Show contacts immediately
+                this.showDataStatus(); // Show contact count
             }
             
-            console.log('Total contacts loaded:', this.contacts.length);
-            this.renderContacts();
+            // Try to load from localStorage
+            try {
+                const savedContacts = localStorage.getItem('contacts');
+                if (savedContacts) {
+                    const parsedContacts = JSON.parse(savedContacts);
+                    if (parsedContacts && parsedContacts.length > 0) {
+                        console.log('Loading contacts from localStorage:', parsedContacts.length, 'contacts');
+                        this.contacts = parsedContacts;
+                        this.renderContacts();
+                        this.showDataStatus();
+                    }
+                }
+            } catch (localStorageError) {
+                console.log('localStorage error:', localStorageError.message);
+            }
+            
+            // Try to load from CSV in the background (don't wait for it)
+            this.loadContactsFromCSV().then(() => {
+                console.log('CSV loading completed');
+            }).catch((csvError) => {
+                console.log('CSV loading failed, keeping current contacts:', csvError.message);
+            });
+            
         } catch (error) {
             console.error('Error loading contacts:', error);
-            
-            // Fallback to embedded contacts
-            if (typeof EMBEDDED_CONTACTS !== 'undefined') {
+            // Fallback to embedded contacts if everything else fails
+            if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
                 console.log('Falling back to embedded contacts');
-                this.contacts = EMBEDDED_CONTACTS;
+                this.contacts = [...EMBEDDED_CONTACTS];
                 this.renderContacts();
+                this.showDataStatus();
             } else {
                 this.showError('Failed to load contacts');
             }
@@ -816,6 +821,16 @@ class ContactDirectoryApp {
         // Simple error notification
         alert('Error: ' + message);
     }
+
+    showDataStatus() {
+        const dataStatus = document.getElementById('dataStatus');
+        const contactCount = document.getElementById('contactCount');
+        
+        if (dataStatus && contactCount) {
+            contactCount.textContent = this.contacts.length;
+            dataStatus.style.display = 'block';
+        }
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -840,6 +855,64 @@ function refreshContacts() {
         console.log('Refreshing contacts...');
         app.loadContacts(); 
     }
+}
+
+function debugContacts() {
+    console.log('🐛 Debugging Contacts...');
+    console.log('=== CONTACT DEBUG INFO ===');
+    
+    // Check if EMBEDDED_CONTACTS is available
+    if (typeof EMBEDDED_CONTACTS !== 'undefined') {
+        console.log('✅ EMBEDDED_CONTACTS available:', EMBEDDED_CONTACTS.length, 'contacts');
+        console.log('First contact:', EMBEDDED_CONTACTS[0]);
+        console.log('Last contact:', EMBEDDED_CONTACTS[EMBEDDED_CONTACTS.length - 1]);
+    } else {
+        console.log('❌ EMBEDDED_CONTACTS not available');
+    }
+    
+    // Check app instance
+    if (typeof app !== 'undefined' && app) {
+        console.log('✅ App instance available');
+        console.log('Current contacts in app:', app.contacts.length);
+        console.log('App contacts array:', app.contacts);
+    } else {
+        console.log('❌ App instance not available');
+    }
+    
+    // Check localStorage
+    try {
+        const stored = localStorage.getItem('contacts');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            console.log('✅ localStorage contacts:', parsed.length);
+        } else {
+            console.log('ℹ️ No contacts in localStorage');
+        }
+    } catch (e) {
+        console.log('❌ localStorage error:', e.message);
+    }
+    
+    // Check browser info
+    console.log('🌐 Browser Info:');
+    console.log('User Agent:', navigator.userAgent);
+    console.log('Platform:', navigator.platform);
+    console.log('Cookies Enabled:', navigator.cookieEnabled);
+    console.log('Online:', navigator.onLine);
+    
+    // Check service worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+            if (reg) {
+                console.log('✅ Service Worker registered:', reg.scope);
+            } else {
+                console.log('❌ No Service Worker registration');
+            }
+        });
+    } else {
+        console.log('❌ Service Worker not supported');
+    }
+    
+    console.log('=== END DEBUG INFO ===');
 }
 
 function testNavigation() {
