@@ -66,16 +66,10 @@ class ContactDirectoryApp {
         try {
             this.showLoading(true);
             console.log('Starting to load contacts...');
+            console.log('Platform:', navigator.platform);
+            console.log('User Agent:', navigator.userAgent);
             
-            // Always start with embedded contacts for immediate display
-            if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
-                console.log('Loading embedded contacts first:', EMBEDDED_CONTACTS.length, 'contacts');
-                this.contacts = [...EMBEDDED_CONTACTS]; // Create a copy
-                this.renderContacts(); // Show contacts immediately
-                this.showDataStatus(); // Show contact count
-            }
-            
-            // Try to load from localStorage
+            // First, try to load from localStorage (user's saved changes)
             try {
                 const savedContacts = localStorage.getItem('contacts');
                 if (savedContacts) {
@@ -85,18 +79,71 @@ class ContactDirectoryApp {
                         this.contacts = parsedContacts;
                         this.renderContacts();
                         this.showDataStatus();
+                        this.showLoading(false);
+                        return; // Use saved contacts if available
                     }
                 }
             } catch (localStorageError) {
                 console.log('localStorage error:', localStorageError.message);
             }
             
-            // Try to load from CSV in the background (don't wait for it)
-            this.loadContactsFromCSV().then(() => {
-                console.log('CSV loading completed');
-            }).catch((csvError) => {
-                console.log('CSV loading failed, keeping current contacts:', csvError.message);
-            });
+            // If no localStorage, start with embedded contacts
+            if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
+                console.log('Loading embedded contacts first:', EMBEDDED_CONTACTS.length, 'contacts');
+                this.contacts = [...EMBEDDED_CONTACTS]; // Create a copy
+                this.renderContacts(); // Show contacts immediately
+                this.showDataStatus(); // Show contact count
+                
+                // Save embedded contacts to localStorage for future use
+                try {
+                    localStorage.setItem('contacts', JSON.stringify(this.contacts));
+                    console.log('Embedded contacts saved to localStorage');
+                } catch (localStorageError) {
+                    console.log('localStorage save failed:', localStorageError.message);
+                }
+            }
+            
+            // For iOS, try to load CSV more aggressively
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            
+            if (isIOS) {
+                console.log('iOS detected, trying CSV loading...');
+                try {
+                    await this.loadContactsFromCSV();
+                    console.log('iOS CSV loading completed');
+                } catch (csvError) {
+                    console.log('iOS CSV loading failed:', csvError.message);
+                    // On iOS, if CSV fails, ensure we keep embedded contacts
+                    if (this.contacts.length === 0 && typeof EMBEDDED_CONTACTS !== 'undefined') {
+                        this.contacts = [...EMBEDDED_CONTACTS];
+                        this.renderContacts();
+                        this.showDataStatus();
+                    }
+                }
+            } else if (isAndroid) {
+                console.log('Android detected, trying CSV loading...');
+                // For Android, try CSV loading but be more careful
+                try {
+                    await this.loadContactsFromCSV();
+                    console.log('Android CSV loading completed');
+                } catch (csvError) {
+                    console.log('Android CSV loading failed:', csvError.message);
+                    // On Android, if CSV fails, ensure we keep embedded contacts
+                    if (this.contacts.length === 0 && typeof EMBEDDED_CONTACTS !== 'undefined') {
+                        this.contacts = [...EMBEDDED_CONTACTS];
+                        this.renderContacts();
+                        this.showDataStatus();
+                    }
+                }
+            } else {
+                // For other platforms, try CSV in background
+                this.loadContactsFromCSV().then(() => {
+                    console.log('CSV loading completed');
+                }).catch((csvError) => {
+                    console.log('CSV loading failed, keeping current contacts:', csvError.message);
+                });
+            }
             
         } catch (error) {
             console.error('Error loading contacts:', error);
@@ -543,6 +590,7 @@ class ContactDirectoryApp {
     }
 
     cancelEditContact() {
+        console.log('Canceling edit contact...');
         this.restoreEditDialog();
     }
 
@@ -811,6 +859,29 @@ function refreshContacts() {
     }
 }
 
+function forceRefreshContacts() {
+    if (app) {
+        console.log('Force refreshing contacts...');
+        // Clear localStorage and force reload from embedded contacts
+        try {
+            localStorage.removeItem('contacts');
+            console.log('localStorage cleared');
+        } catch (e) {
+            console.log('Error clearing localStorage:', e.message);
+        }
+        
+        // Force reload contacts
+        if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
+            app.contacts = [...EMBEDDED_CONTACTS];
+            app.renderContacts();
+            app.showDataStatus();
+            console.log('Force refreshed with embedded contacts:', app.contacts.length);
+        } else {
+            app.loadContacts();
+        }
+    }
+}
+
 function debugContacts() {
     console.log('🐛 Debugging Contacts...');
     console.log('=== CONTACT DEBUG INFO ===');
@@ -853,17 +924,55 @@ function debugContacts() {
     console.log('Cookies Enabled:', navigator.cookieEnabled);
     console.log('Online:', navigator.onLine);
     
+    // Check if it's Android
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    console.log('🤖 Is Android:', isAndroid);
+    
+    // Check if it's iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    console.log('🍎 Is iOS:', isIOS);
+    
     // Check service worker
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistration().then(reg => {
             if (reg) {
                 console.log('✅ Service Worker registered:', reg.scope);
+                console.log('Service Worker state:', reg.active ? reg.active.state : 'No active worker');
             } else {
                 console.log('❌ No Service Worker registration');
             }
         });
     } else {
         console.log('❌ Service Worker not supported');
+    }
+    
+    // Check PWA installation
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        console.log('✅ PWA is controlled by Service Worker');
+    } else {
+        console.log('❌ PWA not controlled by Service Worker');
+    }
+    
+    // Check manifest
+    if ('manifest' in navigator) {
+        navigator.manifest.getManifest().then(manifest => {
+            console.log('✅ Manifest loaded:', manifest.name);
+            console.log('Manifest icons:', manifest.icons?.length || 0);
+        }).catch(e => {
+            console.log('❌ Manifest error:', e.message);
+        });
+    } else {
+        console.log('❌ Manifest not supported');
+    }
+    
+    // Check if running as PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                   window.navigator.standalone === true;
+    console.log('📱 Running as PWA:', isPWA);
+    
+    // Check display mode
+    if ('displayMode' in navigator) {
+        console.log('📱 Display mode:', navigator.displayMode);
     }
     
     console.log('=== END DEBUG INFO ===');

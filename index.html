@@ -24,6 +24,11 @@
     <link rel="icon" type="image/png" sizes="192x192" href="./icon.png">
     <link rel="icon" type="image/png" sizes="512x512" href="./icon.png">
     
+    <!-- Android PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-title" content="JI-Intern">
+    
     <!-- iOS Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
     <link rel="apple-touch-icon" sizes="152x152" href="./icon.png">
@@ -62,6 +67,7 @@
             <div class="data-status" id="dataStatus" style="display: none;">
                 <p>📊 <span id="contactCount">0</span> contacts loaded</p>
                 <button onclick="refreshContacts()" class="btn btn-secondary">🔄 Refresh Data</button>
+                <button onclick="forceRefreshContacts()" class="btn btn-secondary">⚡ Force Refresh</button>
                 <button onclick="testNavigation()" class="btn btn-secondary">🧪 Test Navigation</button>
                 <button onclick="debugContacts()" class="btn btn-secondary">🐛 Debug Contacts</button>
             </div>

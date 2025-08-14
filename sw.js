@@ -1,16 +1,15 @@
 // Service Worker for JI-Intern PWA
-const CACHE_NAME = 'ji-intern-v3';
+const CACHE_NAME = 'ji-intern-v5';
 const urlsToCache = [
     './',
     './index.html',
+    './app.js',
     './styles.css',
     './contacts-data.js',
-    './app.js',
     './manifest.json',
-    './list.csv',
-    './csv-data.html',
     './icon.png',
-    './banner.png'
+    './banner.png',
+    './list.csv'
 ];
 
 // Install event - cache resources
@@ -100,4 +99,18 @@ self.addEventListener('message', event => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+});
+
+// Handle push events for better PWA support
+self.addEventListener('push', event => {
+    console.log('Push event received');
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', event => {
+    console.log('Notification clicked');
+    event.notification.close();
+    event.waitUntil(
+        clients.openWindow('./')
+    );
 });

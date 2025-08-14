@@ -11,6 +11,10 @@
     "lang": "en",
     "categories": ["business", "productivity", "utilities"],
     "prefer_related_applications": false,
+    "display_override": ["standalone", "minimal-ui"],
+    "edge_side_panel": {
+        "preferred_width": 400
+    },
     "icons": [
         {
             "src": "./icon.png",
