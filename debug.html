@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Debug - Contact Loading</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #f5f5f5;
+        }
+        .debug-section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { background: #d4edda; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        .warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        
+        button { 
+            padding: 10px 20px; 
+            margin: 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        
+        .contact-preview {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .contact-item {
+            background: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 3px solid #007bff;
+        }
+        
+        pre {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 PWA Debug - Contact Loading Issues</h1>
+    
+    <div class="debug-section info">
+        <h3>📱 Problem Description</h3>
+        <p><strong>Issue:</strong> On PC you see a list (not complete), on Android you see no contacts.</p>
+        <p><strong>Goal:</strong> Fix contact loading to work consistently on all devices.</p>
+    </div>
+
+    <div class="debug-section">
+        <h3>1. Device & Browser Info</h3>
+        <div id="deviceInfo">Loading...</div>
+        <button onclick="checkDeviceInfo()" class="btn btn-primary">Refresh Device Info</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>2. Contact Data Sources</h3>
+        <div id="dataSources">Checking...</div>
+        <button onclick="checkDataSources()" class="btn btn-primary">Check Data Sources</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>3. Contact Loading Test</h3>
+        <div id="contactTest">Ready to test</div>
+        <button onclick="testContactLoading()" class="btn btn-success">Test Contact Loading</button>
+        <button onclick="clearContacts()" class="btn btn-secondary">Clear Contacts</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>4. Contact Preview</h3>
+        <div id="contactPreview">No contacts loaded yet</div>
+        <button onclick="showContactPreview()" class="btn btn-primary">Show Contact Preview</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>5. Local Storage Status</h3>
+        <div id="storageStatus">Checking...</div>
+        <button onclick="checkStorage()" class="btn btn-primary">Check Storage</button>
+        <button onclick="clearStorage()" class="btn btn-warning">Clear Storage</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>6. File Accessibility Test</h3>
+        <div id="fileTest">Ready to test</div>
+        <button onclick="testFileAccess()" class="btn btn-primary">Test File Access</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>7. Go to Main App</h3>
+        <p>Test the main application with the fixes applied:</p>
+        <button onclick="goToMainApp()" class="btn btn-success">🚀 Open Main App</button>
+    </div>
+
+    <script>
+        // Device info
+        function checkDeviceInfo() {
+            const deviceInfo = document.getElementById('deviceInfo');
+            const userAgent = navigator.userAgent;
+            const platform = navigator.platform;
+            const language = navigator.language;
+            const cookieEnabled = navigator.cookieEnabled;
+            const onLine = navigator.onLine;
+            
+            deviceInfo.innerHTML = `
+                <div class="contact-item">
+                    <strong>User Agent:</strong> ${userAgent}
+                </div>
+                <div class="contact-item">
+                    <strong>Platform:</strong> ${platform}
+                </div>
+                <div class="contact-item">
+                    <strong>Language:</strong> ${language}
+                </div>
+                <div class="contact-item">
+                    <strong>Cookies Enabled:</strong> ${cookieEnabled ? '✅ Yes' : '❌ No'}
+                </div>
+                <div class="contact-item">
+                    <strong>Online:</strong> ${onLine ? '✅ Yes' : '❌ No'}
+                </div>
+                <div class="contact-item">
+                    <strong>Service Worker Support:</strong> ${'serviceWorker' in navigator ? '✅ Yes' : '❌ No'}
+                </div>
+            `;
+        }
+
+        // Check data sources
+        function checkDataSources() {
+            const dataSources = document.getElementById('dataSources');
+            let results = [];
+            
+            // Check if EMBEDDED_CONTACTS is available
+            if (typeof EMBEDDED_CONTACTS !== 'undefined') {
+                results.push(`✅ EMBEDDED_CONTACTS: ${EMBEDDED_CONTACTS.length} contacts available`);
+            } else {
+                results.push('❌ EMBEDDED_CONTACTS: Not available');
+            }
+            
+            // Check if app.js is loaded
+            if (typeof ContactDirectoryApp !== 'undefined') {
+                results.push('✅ ContactDirectoryApp class: Available');
+            } else {
+                results.push('❌ ContactDirectoryApp class: Not available');
+            }
+            
+            // Check if app instance exists
+            if (typeof app !== 'undefined' && app) {
+                results.push('✅ App instance: Available');
+            } else {
+                results.push('❌ App instance: Not available');
+            }
+            
+            dataSources.innerHTML = results.map(result => 
+                `<div class="contact-item">${result}</div>`
+            ).join('');
+        }
+
+        // Test contact loading
+        function testContactLoading() {
+            const contactTest = document.getElementById('contactTest');
+            
+            if (typeof app !== 'undefined' && app) {
+                contactTest.innerHTML = '<div class="contact-item success">✅ App instance found, testing contact loading...</div>';
+                
+                // Try to load contacts
+                try {
+                    app.loadContacts();
+                    contactTest.innerHTML += '<div class="contact-item success">✅ Contact loading initiated</div>';
+                } catch (error) {
+                    contactTest.innerHTML += `<div class="contact-item error">❌ Error loading contacts: ${error.message}</div>`;
+                }
+            } else {
+                contactTest.innerHTML = '<div class="contact-item error">❌ App instance not found. Make sure app.js is loaded.</div>';
+            }
+        }
+
+        // Clear contacts
+        function clearContacts() {
+            const contactTest = document.getElementById('contactTest');
+            
+            if (typeof app !== 'undefined' && app) {
+                try {
+                    app.contacts = [];
+                    app.renderContacts();
+                    contactTest.innerHTML = '<div class="contact-item warning">⚠️ Contacts cleared</div>';
+                } catch (error) {
+                    contactTest.innerHTML = `<div class="contact-item error">❌ Error clearing contacts: ${error.message}</div>`;
+                }
+            } else {
+                contactTest.innerHTML = '<div class="contact-item error">❌ App instance not found</div>';
+            }
+        }
+
+        // Show contact preview
+        function showContactPreview() {
+            const contactPreview = document.getElementById('contactPreview');
+            
+            if (typeof app !== 'undefined' && app && app.contacts) {
+                const contacts = app.contacts;
+                if (contacts.length > 0) {
+                    const preview = contacts.slice(0, 5).map(contact => 
+                        `<div class="contact-item">
+                            <strong>${contact.firstName} ${contact.lastName}</strong> - Internal: ${contact.internalNumber || 'N/A'}
+                        </div>`
+                    ).join('');
+                    
+                    contactPreview.innerHTML = `
+                        <div class="contact-item success">✅ Found ${contacts.length} contacts</div>
+                        <h4>First 5 contacts:</h4>
+                        ${preview}
+                        ${contacts.length > 5 ? `<div class="contact-item info">... and ${contacts.length - 5} more</div>` : ''}
+                    `;
+                } else {
+                    contactPreview.innerHTML = '<div class="contact-item warning">⚠️ No contacts loaded</div>';
+                }
+            } else {
+                contactPreview.innerHTML = '<div class="contact-item error">❌ App instance or contacts not available</div>';
+            }
+        }
+
+        // Check storage
+        function checkStorage() {
+            const storageStatus = document.getElementById('storageStatus');
+            let results = [];
+            
+            try {
+                const contacts = localStorage.getItem('contacts');
+                if (contacts) {
+                    const parsed = JSON.parse(contacts);
+                    results.push(`✅ Local Storage: ${parsed.length} contacts saved`);
+                } else {
+                    results.push('ℹ️ Local Storage: No contacts saved');
+                }
+                
+                const totalKeys = localStorage.length;
+                results.push(`ℹ️ Local Storage: ${totalKeys} total keys`);
+                
+            } catch (error) {
+                results.push(`❌ Local Storage Error: ${error.message}`);
+            }
+            
+            storageStatus.innerHTML = results.map(result => 
+                `<div class="contact-item">${result}</div>`
+            ).join('');
+        }
+
+        // Clear storage
+        function clearStorage() {
+            const storageStatus = document.getElementById('storageStatus');
+            
+            try {
+                localStorage.removeItem('contacts');
+                storageStatus.innerHTML = '<div class="contact-item success">✅ Local storage cleared</div>';
+            } catch (error) {
+                storageStatus.innerHTML = `<div class="contact-item error">❌ Error clearing storage: ${error.message}</div>`;
+            }
+        }
+
+        // Test file access
+        function testFileAccess() {
+            const fileTest = document.getElementById('fileTest');
+            const files = ['list.csv', 'contacts-data.js', 'app.js', 'manifest.json'];
+            let results = [];
+            
+            Promise.all(files.map(async (file) => {
+                try {
+                    const response = await fetch(file);
+                    if (response.ok) {
+                        results.push(`✅ ${file}: Accessible (${response.status})`);
+                    } else {
+                        results.push(`❌ ${file}: Not accessible (${response.status})`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${file}: Error - ${error.message}`);
+                }
+            })).then(() => {
+                fileTest.innerHTML = results.map(result => 
+                    `<div class="contact-item">${result}</div>`
+                ).join('');
+            });
+        }
+
+        // Go to main app
+        function goToMainApp() {
+            window.location.href = './index.html';
+        }
+
+        // Run initial checks
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkDeviceInfo();
+                checkDataSources();
+                checkStorage();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

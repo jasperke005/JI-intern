@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JI-Intern Contact Directory</title>
+    <meta name="description" content="Internal contact directory for JI company">
+    <meta name="theme-color" content="#0061A4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="JI-Intern">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="./manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icon.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icon.png">
+    <link rel="shortcut icon" href="./icon.png">
+    
+    <!-- Android Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./icon.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="./styles.css">
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <!-- App Container -->
+    <div id="app">
+        <!-- Header with Banner -->
+        <header class="app-header">
+            <div class="banner-container" id="banner">
+                <img src="./banner.png" alt="JI Banner" class="banner-image">
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Bar -->
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search contacts..." class="search-input">
+            </div>
+
+            <!-- Data Status -->
+            <div class="data-status" id="dataStatus" style="display: none;">
+                <p>📊 <span id="contactCount">0</span> contacts loaded</p>
+                <button onclick="refreshContacts()" class="btn btn-secondary">🔄 Refresh Data</button>
+                <button onclick="testNavigation()" class="btn btn-secondary">🧪 Test Navigation</button>
+            </div>
+
+            <!-- Contact List -->
+            <div class="contact-list" id="contactList">
+                <!-- Contacts will be populated here -->
+            </div>
+
+            <!-- No Results Message -->
+            <div id="noResults" class="no-results" style="display: none;">
+                <p>No contacts found matching your search.</p>
+            </div>
+        </main>
+
+        <!-- Floating Action Buttons (Supervisor Only) -->
+        <div id="supervisorButtons" class="fab-container" style="display: none;">
+            <button class="fab fab-add" onclick="showAddContactDialog()" title="Add Contact">
+                <span class="material-icons">add</span>
+            </button>
+            <button class="fab fab-edit" onclick="showEditContactDialog()" title="Edit Contact">
+                <span class="material-icons">edit</span>
+            </button>
+            <button class="fab fab-delete" onclick="showDeleteContactDialog()" title="Delete Contact">
+                <span class="material-icons">delete</span>
+            </button>
+            <button class="fab fab-upload" onclick="showUploadDialog()" title="Upload CSV">
+                <span>Upload<br>CSV</span>
+            </button>
+            <button class="fab fab-download" onclick="showDownloadDialog()" title="Download CSV">
+                <span>Download<br>CSV</span>
+            </button>
+            <button class="fab fab-logout" onclick="logoutSupervisor()" title="Logout Supervisor">
+                <span class="material-icons">exit_to_app</span>
+            </button>
+        </div>
+
+        <!-- Regular User Download Button -->
+        <div id="userDownloadButton" class="fab-container" style="display: none;">
+            <!-- CSV download button removed as requested -->
+        </div>
+    </div>
+
+    <!-- Add Contact Dialog -->
+    <div id="addContactDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Add New Contact</h2>
+            <form id="addContactForm">
+                <input type="text" id="firstName" placeholder="First Name" required>
+                <input type="text" id="lastName" placeholder="Last Name" required>
+                <input type="text" id="internalNumber" placeholder="Internal Number" required>
+                <input type="text" id="wirelessNumber" placeholder="Wireless Number">
+                <input type="text" id="function" placeholder="Function">
+                <input type="text" id="directLine" placeholder="Direct Line">
+                <input type="text" id="gsmNumber" placeholder="GSM Number">
+                <input type="text" id="faxNumber" placeholder="Fax Number">
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">Add Contact</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddContactDialog()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Contact Dialog -->
+    <div id="editContactDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Edit Contact</h2>
+            <div class="search-section">
+                <input type="text" id="editSearchInput" placeholder="Search contacts to edit..." class="search-input">
+                <div id="editContactList" class="edit-contact-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Contact Dialog -->
+    <div id="deleteContactDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Delete Contact</h2>
+            <div class="search-section">
+                <input type="text" id="deleteSearchInput" placeholder="Search contacts to delete..." class="search-input">
+                <div id="deleteContactList" class="edit-contact-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload CSV Dialog -->
+    <div id="uploadDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Upload CSV</h2>
+            <input type="file" id="csvFile" accept=".csv" class="file-input">
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="uploadCSV()">Upload</button>
+                <button class="btn btn-secondary" onclick="hideUploadDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download CSV Dialog -->
+    <div id="downloadDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Download CSV</h2>
+            <p>Download the current contact list as a CSV file.</p>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="downloadCSV()">Download</button>
+                <button class="btn btn-secondary" onclick="hideDownloadDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supervisor Password Dialog -->
+    <div id="passwordDialog" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Supervisor Access Required</h2>
+            <p>Please enter the supervisor password to access editing options.</p>
+            <input type="password" id="supervisorPassword" placeholder="Password" class="password-input">
+            <div id="passwordError" class="error-message" style="display: none;">
+                Incorrect password. Please try again.
+            </div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="verifyPassword()">Verify</button>
+                <button class="btn btn-secondary" onclick="hidePasswordDialog()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./contacts-data.js"></script>
+    <script src="./app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        // Check if service workers are supported
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New content is available, show update notification
+                                    if (confirm('New version available! Reload to update?')) {
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(error) {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>

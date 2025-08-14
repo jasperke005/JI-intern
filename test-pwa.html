@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .test-item { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🔧 PWA Functionality Test</h1>
+    
+    <div class="test-item info">
+        <h3>📱 PWA Installation Test</h3>
+        <p>This page helps you verify that your PWA is working correctly on GitHub Pages.</p>
+    </div>
+
+    <div class="test-item">
+        <h3>1. Service Worker Status</h3>
+        <div id="sw-status">Checking...</div>
+        <button onclick="checkServiceWorker()" class="btn-primary">Check Again</button>
+    </div>
+
+    <div class="test-item">
+        <h3>2. Manifest Test</h3>
+        <div id="manifest-status">Checking...</div>
+        <button onclick="checkManifest()" class="btn-primary">Check Again</button>
+    </div>
+
+    <div class="test-item">
+        <h3>3. Offline Test</h3>
+        <div id="offline-status">Ready to test</div>
+        <button onclick="testOffline()" class="btn-primary">Test Offline</button>
+        <button onclick="goToMainApp()" class="btn-secondary">Go to Main App</button>
+    </div>
+
+    <div class="test-item">
+        <h3>4. PWA Install Prompt</h3>
+        <div id="install-status">Checking install capability...</div>
+        <button id="install-btn" style="display: none;" class="btn-primary">Install PWA</button>
+    </div>
+
+    <div class="test-item info">
+        <h3>📋 Test Results</h3>
+        <div id="test-results">
+            <p>Run the tests above to see results...</p>
+        </div>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        let installButton = document.getElementById('install-btn');
+        let installStatus = document.getElementById('install-status');
+
+        // Check service worker
+        function checkServiceWorker() {
+            const statusDiv = document.getElementById('sw-status');
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(registrations => {
+                    if (registrations.length > 0) {
+                        statusDiv.innerHTML = '<span class="success">✅ Service Worker is registered and active</span>';
+                        statusDiv.className = 'test-item success';
+                    } else {
+                        statusDiv.innerHTML = '<span class="error">❌ Service Worker is not registered</span>';
+                        statusDiv.className = 'test-item error';
+                    }
+                });
+            } else {
+                statusDiv.innerHTML = '<span class="error">❌ Service Worker not supported in this browser</span>';
+                statusDiv.className = 'test-item error';
+            }
+        }
+
+        // Check manifest
+        function checkManifest() {
+            const statusDiv = document.getElementById('manifest-status');
+            if ('serviceWorker' in navigator) {
+                fetch('./manifest.json')
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        throw new Error('Manifest not found');
+                    })
+                    .then(manifest => {
+                        statusDiv.innerHTML = `<span class="success">✅ Manifest loaded successfully</span><br>
+                            <small>App Name: ${manifest.name}<br>
+                            Short Name: ${manifest.short_name}</small>`;
+                        statusDiv.className = 'test-item success';
+                    })
+                    .catch(error => {
+                        statusDiv.innerHTML = '<span class="error">❌ Manifest not found or invalid</span>';
+                        statusDiv.className = 'test-item error';
+                    });
+            } else {
+                statusDiv.innerHTML = '<span class="error">❌ Cannot test manifest without service worker support</span>';
+                statusDiv.className = 'test-item error';
+            }
+        }
+
+        // Test offline functionality
+        function testOffline() {
+            const statusDiv = document.getElementById('offline-status');
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(registration => {
+                    if (registration.active) {
+                        statusDiv.innerHTML = '<span class="success">✅ Service Worker is ready for offline functionality</span>';
+                        statusDiv.className = 'test-item success';
+                    } else {
+                        statusDiv.innerHTML = '<span class="error">❌ Service Worker is not ready</span>';
+                        statusDiv.className = 'test-item error';
+                    }
+                });
+            } else {
+                statusDiv.innerHTML = '<span class="error">❌ Service Worker not supported</span>';
+                statusDiv.className = 'test-item error';
+            }
+        }
+
+        // Go to main app
+        function goToMainApp() {
+            window.location.href = './index.html';
+        }
+
+        // Listen for beforeinstallprompt event
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'block';
+            installStatus.innerHTML = '<span class="success">✅ PWA can be installed!</span>';
+            installStatus.className = 'test-item success';
+        });
+
+        // Handle install button click
+        installButton.addEventListener('click', () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        installStatus.innerHTML = '<span class="success">✅ PWA installed successfully!</span>';
+                        installStatus.className = 'test-item success';
+                    } else {
+                        installStatus.innerHTML = '<span class="error">❌ PWA installation cancelled</span>';
+                        installStatus.className = 'test-item error';
+                    }
+                    deferredPrompt = null;
+                    installButton.style.display = 'none';
+                });
+            }
+        });
+
+        // Check if PWA is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installStatus.innerHTML = '<span class="success">✅ PWA is already installed and running in standalone mode!</span>';
+            installStatus.className = 'test-item success';
+        }
+
+        // Run initial checks
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                checkServiceWorker();
+                checkManifest();
+                testOffline();
+            }, 1000);
+        });
+
+        // Update test results
+        function updateTestResults() {
+            const resultsDiv = document.getElementById('test-results');
+            let results = [];
+            
+            if ('serviceWorker' in navigator) {
+                results.push('✅ Service Worker supported');
+            } else {
+                results.push('❌ Service Worker not supported');
+            }
+            
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                results.push('✅ Running as installed PWA');
+            } else {
+                results.push('ℹ️ Running in browser');
+            }
+            
+            resultsDiv.innerHTML = results.map(result => `<p>${result}</p>`).join('');
+        }
+
+        window.addEventListener('load', updateTestResults);
+    </script>
+</body>
+</html>
