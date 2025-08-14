@@ -515,38 +515,34 @@ class ContactDirectoryApp {
     }
 
     editContact(contact) {
-        // Create a proper edit form with all fields
-        const editForm = `
-            <div class="edit-contact-form">
-                <h3>Edit Contact: ${contact.firstName} ${contact.lastName}</h3>
-                <form id="editContactForm">
-                    <input type="text" id="editFirstName" placeholder="First Name" value="${contact.firstName}" required>
-                    <input type="text" id="editLastName" placeholder="Last Name" value="${contact.lastName}" required>
-                    <input type="text" id="editInternalNumber" placeholder="Internal Number" value="${contact.internalNumber || ''}" required>
-                    <input type="text" id="editWirelessNumber" placeholder="Wireless Number" value="${contact.wirelessNumber || ''}">
-                    <input type="text" id="editFunction" placeholder="Function" value="${contact.function || ''}">
-                    <input type="text" id="editDirectLine" placeholder="Direct Line" value="${contact.directLine || ''}">
-                    <input type="text" id="editGsmNumber" placeholder="GSM Number" value="${contact.gsmNumber || ''}">
-                    <input type="text" id="editFaxNumber" placeholder="Fax Number" value="${contact.faxNumber || ''}">
+        const editDialog = document.getElementById('editContactDialog');
+        if (!editDialog) return;
+        
+        // Create the edit form with a close button
+        editDialog.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edit Contact</h2>
+                    <button class="close-btn" onclick="hideEditContactDialog()">&times;</button>
+                </div>
+                <form id="editContactForm" onsubmit="handleEditContact(event, ${JSON.stringify(contact).replace(/"/g, '&quot;')})">
+                    <input type="text" id="editFirstName" value="${contact.firstName || ''}" placeholder="First Name" required>
+                    <input type="text" id="editLastName" value="${contact.lastName || ''}" placeholder="Last Name" required>
+                    <input type="text" id="editInternalNumber" value="${contact.internalNumber || ''}" placeholder="Internal Number" required>
+                    <input type="text" id="editWirelessNumber" value="${contact.wirelessNumber || ''}" placeholder="Wireless Number">
+                    <input type="text" id="editFunction" value="${contact.function || ''}" placeholder="Function">
+                    <input type="text" id="editDirectLine" value="${contact.directLine || ''}" placeholder="Direct Line">
+                    <input type="text" id="editGsmNumber" value="${contact.gsmNumber || ''}" placeholder="GSM Number">
+                    <input type="text" id="editFaxNumber" value="${contact.faxNumber || ''}" placeholder="Fax Number">
                     <div class="button-group">
                         <button type="submit" class="btn btn-primary">Save Changes</button>
-                        <button type="button" class="btn btn-secondary" onclick="app.cancelEditContact()">Cancel</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideEditContactDialog()">Cancel</button>
                     </div>
                 </form>
             </div>
         `;
         
-        // Replace the edit dialog content
-        const editDialog = document.getElementById('editContactDialog');
-        if (editDialog) {
-            editDialog.innerHTML = editForm;
-            
-            // Add form submit handler
-            const form = document.getElementById('editContactForm');
-            if (form) {
-                form.addEventListener('submit', (e) => this.handleEditContact(e, contact));
-            }
-        }
+        editDialog.style.display = 'block';
     }
 
     handleEditContact(event, originalContact) {
@@ -580,38 +576,13 @@ class ContactDirectoryApp {
             }
         }
         
-        // Always restore the original edit dialog so it can be closed
-        this.restoreEditDialog();
+        // Close the dialog
+        hideEditContactDialog();
     }
 
     cancelEditContact() {
         console.log('Canceling edit contact...');
-        this.restoreEditDialog();
-    }
-
-    restoreEditDialog() {
-        // Restore the original edit dialog content
-        const editDialog = document.getElementById('editContactDialog');
-        if (editDialog) {
-            editDialog.innerHTML = `
-                <div class="modal-content">
-                    <h2>Edit Contact</h2>
-                    <div class="search-section">
-                        <input type="text" id="editSearchInput" placeholder="Search contacts to edit..." class="search-input">
-                        <div id="editContactList" class="edit-contact-list"></div>
-                    </div>
-                </div>
-            `;
-            
-            // Re-add the search functionality
-            const searchInput = document.getElementById('editSearchInput');
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => this.handleEditSearch(e.target.value));
-            }
-            
-            // Re-render the contact list
-            this.renderEditContactList();
-        }
+        hideEditContactDialog();
     }
 
     showDeleteContactDialog() {
@@ -823,12 +794,36 @@ class ContactDirectoryApp {
     }
 
     showDataStatus() {
-        const dataStatus = document.getElementById('dataStatus');
-        const contactCount = document.getElementById('contactCount');
+        // This function is no longer needed since debug view was removed
+        // Keep it empty to avoid errors if called elsewhere
+    }
+}
+
+// Global functions that are still needed
+function refreshContacts() {
+    if (app) {
+        app.loadContacts();
+    }
+}
+
+function forceRefreshContacts() {
+    if (app) {
+        console.log('Force refreshing contacts...');
+        // Clear localStorage and force reload from embedded contacts
+        try {
+            localStorage.removeItem('contacts');
+            console.log('localStorage cleared');
+        } catch (e) {
+            console.log('Error clearing localStorage:', e.message);
+        }
         
-        if (dataStatus && contactCount) {
-            contactCount.textContent = this.contacts.length;
-            dataStatus.style.display = 'block';
+        // Force reload contacts
+        if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
+            app.contacts = [...EMBEDDED_CONTACTS];
+            app.renderContacts();
+            console.log('Force refreshed with embedded contacts:', app.contacts.length);
+        } else {
+            app.loadContacts();
         }
     }
 }
@@ -850,238 +845,6 @@ function verifyPassword() { app.verifyPassword(); }
 function logoutSupervisor() { app.logoutSupervisor(); }
 function uploadCSV() { app.uploadCSV(); }
 function downloadCSV() { app.downloadCSV(); }
-function refreshContacts() { 
-    if (app) {
-        console.log('Refreshing contacts...');
-        app.loadContacts(); 
-    }
-}
-
-function forceRefreshContacts() {
-    if (app) {
-        console.log('Force refreshing contacts...');
-        // Clear localStorage and force reload from embedded contacts
-        try {
-            localStorage.removeItem('contacts');
-            console.log('localStorage cleared');
-        } catch (e) {
-            console.log('Error clearing localStorage:', e.message);
-        }
-        
-        // Force reload contacts
-        if (typeof EMBEDDED_CONTACTS !== 'undefined' && EMBEDDED_CONTACTS.length > 0) {
-            app.contacts = [...EMBEDDED_CONTACTS];
-            app.renderContacts();
-            app.showDataStatus();
-            console.log('Force refreshed with embedded contacts:', app.contacts.length);
-        } else {
-            app.loadContacts();
-        }
-    }
-}
-
-function debugContacts() {
-    console.log('🐛 Debugging Contacts...');
-    console.log('=== CONTACT DEBUG INFO ===');
-    
-    // Check if EMBEDDED_CONTACTS is available
-    if (typeof EMBEDDED_CONTACTS !== 'undefined') {
-        console.log('✅ EMBEDDED_CONTACTS available:', EMBEDDED_CONTACTS.length, 'contacts');
-        console.log('First contact:', EMBEDDED_CONTACTS[0]);
-        console.log('Last contact:', EMBEDDED_CONTACTS[EMBEDDED_CONTACTS.length - 1]);
-    } else {
-        console.log('❌ EMBEDDED_CONTACTS not available');
-    }
-    
-    // Check app instance
-    if (typeof app !== 'undefined' && app) {
-        console.log('✅ App instance available');
-        console.log('Current contacts in app:', app.contacts.length);
-        console.log('App contacts array:', app.contacts);
-    } else {
-        console.log('❌ App instance not available');
-    }
-    
-    // Check localStorage
-    try {
-        const stored = localStorage.getItem('contacts');
-        if (stored) {
-            const parsed = JSON.parse(stored);
-            console.log('✅ localStorage contacts:', parsed.length);
-        } else {
-            console.log('ℹ️ No contacts in localStorage');
-        }
-    } catch (e) {
-        console.log('❌ localStorage error:', e.message);
-    }
-    
-    // Check browser info
-    console.log('🌐 Browser Info:');
-    console.log('User Agent:', navigator.userAgent);
-    console.log('Platform:', navigator.platform);
-    console.log('Cookies Enabled:', navigator.cookieEnabled);
-    console.log('Online:', navigator.onLine);
-    
-    // Check if it's Android
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    console.log('🤖 Is Android:', isAndroid);
-    
-    // Check if it's iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    console.log('🍎 Is iOS:', isIOS);
-    
-    // Check service worker
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(reg => {
-            if (reg) {
-                console.log('✅ Service Worker registered:', reg.scope);
-                console.log('Service Worker state:', reg.active ? reg.active.state : 'No active worker');
-            } else {
-                console.log('❌ No Service Worker registration');
-            }
-        });
-    } else {
-        console.log('❌ Service Worker not supported');
-    }
-    
-    // Check PWA installation
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        console.log('✅ PWA is controlled by Service Worker');
-    } else {
-        console.log('❌ PWA not controlled by Service Worker');
-    }
-    
-    // Check manifest
-    if ('manifest' in navigator) {
-        navigator.manifest.getManifest().then(manifest => {
-            console.log('✅ Manifest loaded:', manifest.name);
-            console.log('Manifest icons:', manifest.icons?.length || 0);
-            console.log('Manifest shortcuts:', manifest.shortcuts?.length || 0);
-        }).catch(e => {
-            console.log('❌ Manifest error:', e.message);
-        });
-    } else {
-        console.log('❌ Manifest not supported');
-    }
-    
-    // Check if running as PWA
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                   window.navigator.standalone === true;
-    console.log('📱 Running as PWA:', isPWA);
-    
-    // Check display mode
-    if ('displayMode' in navigator) {
-        console.log('📱 Display mode:', navigator.displayMode);
-    }
-    
-    // Check icon loading
-    const iconImg = new Image();
-    iconImg.onload = () => console.log('✅ Icon image loads successfully');
-    iconImg.onerror = () => console.log('❌ Icon image failed to load');
-    iconImg.src = './icon.png';
-    
-    console.log('=== END DEBUG INFO ===');
-}
-
-function testNavigation() {
-    console.log('🧪 Testing Navigation...');
-    console.log('Current URL:', window.location.href);
-    console.log('Current pathname:', window.location.pathname);
-    console.log('Current origin:', window.location.origin);
-    
-    // Test if we can access key files
-    const testFiles = [
-        './index.html',
-        './app.js',
-        './styles.css',
-        './contacts-data.js',
-        './manifest.json',
-        './icon.png'
-    ];
-    
-    testFiles.forEach(async (file) => {
-        try {
-            const response = await fetch(file);
-            console.log(`✅ ${file}: ${response.status} ${response.statusText}`);
-        } catch (error) {
-            console.log(`❌ ${file}: ${error.message}`);
-        }
-    });
-    
-    // Test service worker status
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistration().then(registration => {
-            if (registration) {
-                console.log('✅ Service Worker registered:', registration.scope);
-            } else {
-                console.log('❌ No Service Worker registration found');
-            }
-        });
-    } else {
-        console.log('❌ Service Worker not supported');
-    }
-    
-    // Test PWA manifest
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        console.log('✅ PWA is controlled by Service Worker');
-    } else {
-        console.log('❌ PWA not controlled by Service Worker');
-    }
-}
-
-function fixAndroidIcon() {
-    console.log('🤖 Fixing Android Icon...');
-    
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    if (!isAndroid) {
-        console.log('This function is for Android devices only');
-        alert('This function is for Android devices only');
-        return;
-    }
-    
-    console.log('Android device detected, attempting to fix icon...');
-    
-    // Check if running as PWA
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-    console.log('Running as PWA:', isPWA);
-    
-    if (isPWA) {
-        console.log('App is running as PWA, checking icon cache...');
-        
-        // Try to reload the icon
-        const iconImg = new Image();
-        iconImg.onload = () => {
-            console.log('✅ Icon loads successfully, clearing cache...');
-            // Clear service worker cache
-            if ('caches' in window) {
-                caches.keys().then(cacheNames => {
-                    cacheNames.forEach(cacheName => {
-                        if (cacheName.includes('ji-intern')) {
-                            caches.delete(cacheName).then(() => {
-                                console.log('Cache cleared:', cacheName);
-                            });
-                        }
-                    });
-                });
-                
-                // Reload the page to refresh the icon
-                setTimeout(() => {
-                    if (confirm('Cache cleared! Reload the app to refresh the icon?')) {
-                        window.location.reload();
-                    }
-                }, 1000);
-            }
-        };
-        iconImg.onerror = () => {
-            console.log('❌ Icon still fails to load');
-            alert('Icon file not accessible. Please check if icon.png exists.');
-        };
-        iconImg.src = './icon.png?v=' + Date.now(); // Force reload
-    } else {
-        console.log('App is not running as PWA');
-        alert('Please install the app as a PWA first:\n\n1. Open Chrome/Edge\n2. Tap the menu (⋮)\n3. Tap "Add to Home screen"\n4. Install the app');
-    }
-}
 
 // Initialize the app when DOM is loaded
 let app;
@@ -1094,3 +857,4 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('Error initializing app:', error);
     }
 });
+
