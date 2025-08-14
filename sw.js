@@ -1,5 +1,5 @@
 // Service Worker for JI-Intern PWA
-const CACHE_NAME = 'ji-intern-v5';
+const CACHE_NAME = 'ji-intern-v6';
 const urlsToCache = [
     './',
     './index.html',

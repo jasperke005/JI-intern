@@ -29,6 +29,11 @@
     <meta name="mobile-web-app-status-bar-style" content="default">
     <meta name="mobile-web-app-title" content="JI-Intern">
     
+    <!-- Android Chrome PWA -->
+    <meta name="theme-color" content="#0061A4">
+    <meta name="msapplication-TileColor" content="#0061A4">
+    <meta name="msapplication-TileImage" content="./icon.png">
+    
     <!-- iOS Icons -->
     <link rel="apple-touch-icon" sizes="180x180" href="./icon.png">
     <link rel="apple-touch-icon" sizes="152x152" href="./icon.png">
@@ -68,6 +73,7 @@
                 <p>📊 <span id="contactCount">0</span> contacts loaded</p>
                 <button onclick="refreshContacts()" class="btn btn-secondary">🔄 Refresh Data</button>
                 <button onclick="forceRefreshContacts()" class="btn btn-secondary">⚡ Force Refresh</button>
+                <button onclick="fixAndroidIcon()" class="btn btn-secondary">🤖 Fix Android Icon</button>
                 <button onclick="testNavigation()" class="btn btn-secondary">🧪 Test Navigation</button>
                 <button onclick="debugContacts()" class="btn btn-secondary">🐛 Debug Contacts</button>
             </div>

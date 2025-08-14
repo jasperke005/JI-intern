@@ -564,13 +564,8 @@ class ContactDirectoryApp {
             faxNumber: document.getElementById('editFaxNumber').value
         };
         
-        // Update the contact in the array
-        const contactIndex = this.contacts.findIndex(c => 
-            c.firstName === originalContact.firstName && 
-            c.lastName === originalContact.lastName && 
-            c.internalNumber === originalContact.internalNumber
-        );
-        
+        // Find and update the contact
+        const contactIndex = this.contacts.findIndex(c => c.internalNumber === originalContact.internalNumber);
         if (contactIndex !== -1) {
             this.contacts[contactIndex] = updatedContact;
             this.renderContacts();
@@ -585,7 +580,7 @@ class ContactDirectoryApp {
             }
         }
         
-        // Restore the original edit dialog
+        // Always restore the original edit dialog so it can be closed
         this.restoreEditDialog();
     }
 
@@ -613,6 +608,9 @@ class ContactDirectoryApp {
             if (searchInput) {
                 searchInput.addEventListener('input', (e) => this.handleEditSearch(e.target.value));
             }
+            
+            // Re-render the contact list
+            this.renderEditContactList();
         }
     }
 
@@ -958,6 +956,7 @@ function debugContacts() {
         navigator.manifest.getManifest().then(manifest => {
             console.log('✅ Manifest loaded:', manifest.name);
             console.log('Manifest icons:', manifest.icons?.length || 0);
+            console.log('Manifest shortcuts:', manifest.shortcuts?.length || 0);
         }).catch(e => {
             console.log('❌ Manifest error:', e.message);
         });
@@ -974,6 +973,12 @@ function debugContacts() {
     if ('displayMode' in navigator) {
         console.log('📱 Display mode:', navigator.displayMode);
     }
+    
+    // Check icon loading
+    const iconImg = new Image();
+    iconImg.onload = () => console.log('✅ Icon image loads successfully');
+    iconImg.onerror = () => console.log('❌ Icon image failed to load');
+    iconImg.src = './icon.png';
     
     console.log('=== END DEBUG INFO ===');
 }
@@ -1021,6 +1026,60 @@ function testNavigation() {
         console.log('✅ PWA is controlled by Service Worker');
     } else {
         console.log('❌ PWA not controlled by Service Worker');
+    }
+}
+
+function fixAndroidIcon() {
+    console.log('🤖 Fixing Android Icon...');
+    
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    if (!isAndroid) {
+        console.log('This function is for Android devices only');
+        alert('This function is for Android devices only');
+        return;
+    }
+    
+    console.log('Android device detected, attempting to fix icon...');
+    
+    // Check if running as PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+    console.log('Running as PWA:', isPWA);
+    
+    if (isPWA) {
+        console.log('App is running as PWA, checking icon cache...');
+        
+        // Try to reload the icon
+        const iconImg = new Image();
+        iconImg.onload = () => {
+            console.log('✅ Icon loads successfully, clearing cache...');
+            // Clear service worker cache
+            if ('caches' in window) {
+                caches.keys().then(cacheNames => {
+                    cacheNames.forEach(cacheName => {
+                        if (cacheName.includes('ji-intern')) {
+                            caches.delete(cacheName).then(() => {
+                                console.log('Cache cleared:', cacheName);
+                            });
+                        }
+                    });
+                });
+                
+                // Reload the page to refresh the icon
+                setTimeout(() => {
+                    if (confirm('Cache cleared! Reload the app to refresh the icon?')) {
+                        window.location.reload();
+                    }
+                }, 1000);
+            }
+        };
+        iconImg.onerror = () => {
+            console.log('❌ Icon still fails to load');
+            alert('Icon file not accessible. Please check if icon.png exists.');
+        };
+        iconImg.src = './icon.png?v=' + Date.now(); // Force reload
+    } else {
+        console.log('App is not running as PWA');
+        alert('Please install the app as a PWA first:\n\n1. Open Chrome/Edge\n2. Tap the menu (⋮)\n3. Tap "Add to Home screen"\n4. Install the app');
     }
 }
 
